@@ -1,5 +1,5 @@
 #scws4go
-这是一个对[scws](github.com/hightman/scws)的go绑定,区别于[bylevel/goscws](github.com/bylevel/goscws)的是提供更加简单的可并发的接口.
+这是一个对[scws](https://github.com/hightman/scws)的go绑定,区别于[bylevel/goscws](https://github.com/bylevel/goscws)的是提供更加简单的可并发的接口.
 
 #安装方法
 ##安装hightman/scws
