@@ -9,6 +9,16 @@ package scws4go
 // 
 // 这里假设通过C_INCLUDE_PATH和LIBRARY_PATH能找到scws的头文件和库文件
 
+char * CharOff2String(char* text,int off) {
+    return text+off;
+}
+
+char * CharArray2String(char text[3]) {
+    return &text[0];
+}
+
+#include <stdlib.h>
+#include <string.h>
 #include "scws/scws.h"
 #cgo LDFLAGS : -lscws
 */
@@ -17,7 +27,6 @@ import "C"
 import (
     "errors"
     "unsafe"
-    "sync"
 )
 
 const (
@@ -36,7 +45,7 @@ const (
 
 // 分词结果
 type ScwsRes struct {
-    Word   string  //分词的结果
+    Term   string  //分词的结果
     Attr   string  //词性
     Idf    float64 //idf值
 }
@@ -68,7 +77,7 @@ func (this *Scws) SetCharset(cs string) {
 func (this *Scws) AddDict(fPath string, mode int) error {
     ctext := C.CString(fPath)
     defer C.free(unsafe.Pointer(ctext))
-    ret := int(C.scws_add_dict(this.root,ctext,mode))
+    ret := int(C.scws_add_dict(this.root,ctext,C.int(mode)))
     if ret != 0 {
         return errors.New("AddDict Fail")
     }
@@ -79,7 +88,7 @@ func (this *Scws) AddDict(fPath string, mode int) error {
 func (this *Scws) SetDict(fPath string, mode int) error {
     ctext := C.CString(fPath)
     defer C.free(unsafe.Pointer(ctext))
-    ret := int(C.scws_set_dict(this.root,ctext,mode))
+    ret := int(C.scws_set_dict(this.root,ctext,C.int(mode)))
     if ret != 0 {
         return errors.New("AddDict Fail")
     }
@@ -126,6 +135,9 @@ func (this *Scws) SetDuality(yes int) {
 // scws_get_words
 
 func (this *Scws) Segment(text string)([]ScwsRes,error) {
+    if this.forkScws == nil {
+        return nil,errors.New("必须在非并发情况下调用一次Scws.Init")
+    }
     // 分词结果数组
     scwsResult := make([]ScwsRes,0)
 
@@ -141,10 +153,11 @@ func (this *Scws) Segment(text string)([]ScwsRes,error) {
 
         cur := res
         for cur != nil {
+            attr := (*C.char)(unsafe.Pointer(&cur.attr[0]))
             scwsResult = append(scwsResult,ScwsRes{
-                Word : C.GoStringN(ctext+cur.off,cur._len),
-                Idf : cur.idf,
-                Attr : C.GoString(cur.attr)})
+                Term : C.GoStringN(C.CharOff2String(ctext,cur.off),C.int(cur.len)),
+                Idf : float64(cur.idf),
+                Attr : C.GoStringN(attr,C.int(C.strlen(attr))) })
             cur = cur.next
         }
 
@@ -161,11 +174,16 @@ func (this *Scws) Segment(text string)([]ScwsRes,error) {
 
 // 释放Scws的全部资源.
 func (this *Scws) Free() (error) {
-   if this.forkScws {
+    if this.forkScws != nil {
         close(this.forkScws)
         for s := range this.forkScws {
             C.scws_free(s)
         }
+    }
+
+    if this.root != nil {
+        C.scws_free(this.root)
+        this.root = nil
     }
 
     return nil
@@ -173,11 +191,16 @@ func (this *Scws) Free() (error) {
 
 // 内部复制多个scws实例,并发调用Segment的时候可以并发切词.
 // 否则Segment也能正常使用,只是所有切词都是串行执行.
-func (this *Scws) Fork(count int) (error) {
-    s.forkScws = make(chan C.scws_t,count)
-    s.forkScws<-this.root
+func (this *Scws) Init(count int) (error) {
+    if this.forkScws != nil {
+        return errors.New("Scws.Init只允许调用一次")
+    }
+    if count < 1 {
+        return errors.New("不能少于1个实例")
+    }
+    this.forkScws = make(chan C.scws_t,count)
 
-    for i:=0;i<count-1;i++ {
+    for i:=0;i<count;i++ {
         tmp := C.scws_fork(this.root)
         if tmp != nil {
             this.forkScws<-tmp
@@ -186,13 +209,13 @@ func (this *Scws) Fork(count int) (error) {
     if len(this.forkScws) != count {
         return errors.New("内存不足导致fork数量不符合预期")
     }
+    return nil
 }
 
 // Scws构造函数
 func NewScws() (*Scws) {
     s := &Scws{}
     s.root = C.scws_new()
-    s.forkScws = make(chan C.scws_t)
-    s.forkScws<- s.root
+    s.forkScws = nil
     return s
 }
