@@ -9,7 +9,7 @@
 
     cd scws-1.2.1 ; ./configure --prefix=$HOME/usr/ ; make install
     
-如果你也这样安装,请确认环境变量CPLUS_INCLUDE_PATH包含了$HOME/usr/include;LD_LIBRARY_PATH包含了$HOME/usr/lib.cgo使用gcc编译器的时候需要靠这两个变量来找到scws.(这些都是太基础东西了,请原谅我啰嗦了一次.)
+如果你也这样安装,请确认环境变量CPLUS_INCLUDE_PATH包含了$HOME/usr/include;LIBRARY_PATH包含了$HOME/usr/lib.cgo使用gcc编译器的时候需要靠这两个变量来找到scws.(这些都是太基础东西了,请原谅我啰嗦了一次.)
     
 ##安装
     go get github.com/getwe/scws4go
