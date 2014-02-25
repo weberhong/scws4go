@@ -27,6 +27,7 @@ import "C"
 import (
     "errors"
     "unsafe"
+    "fmt"
 )
 
 const (
@@ -79,7 +80,7 @@ func (this *Scws) AddDict(fPath string, mode int) error {
     defer C.free(unsafe.Pointer(ctext))
     ret := int(C.scws_add_dict(this.root,ctext,C.int(mode)))
     if ret != 0 {
-        return errors.New("AddDict Fail")
+        return errors.New(fmt.Sprintf("Add Dict [%s] Fail",fPath))
     }
     return nil
 }
@@ -90,7 +91,7 @@ func (this *Scws) SetDict(fPath string, mode int) error {
     defer C.free(unsafe.Pointer(ctext))
     ret := int(C.scws_set_dict(this.root,ctext,C.int(mode)))
     if ret != 0 {
-        return errors.New("AddDict Fail")
+        return errors.New(fmt.Sprintf("Set Dict [%s] Fail",fPath))
     }
     return nil
 }
@@ -101,7 +102,7 @@ func (this *Scws) SetRule(fPath string) error {
     defer C.free(unsafe.Pointer(ctext))
     C.scws_set_rule(this.root,ctext)
     if this.root.r == nil{
-        return errors.New("Set Rule Fail")
+        return errors.New(fmt.Sprintf("Set Rule [%s] Fail",fPath))
     }
     return nil
 }
